@@ -28,6 +28,11 @@ async fn blocks_left(block: &Block<TxHash>) -> Option<u128> {
     }
 }
 
+async fn does_oracle_exist(node: &Node) -> Result<bool> {
+    let address: Address = "0xD6a6f0D7f08c2D31455a210546F85DdfF1D9030a".parse()?;
+    Ok(node.client.get_code(address, None).await?.len() > 0)
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     let node = Node::new_local_node_from_env().await?;
@@ -37,6 +42,11 @@ async fn main() -> Result<()> {
     println!("Watching for blocks");
     let address: Address = "0xc86E1A7a4AA5A9B17f6997a59B311835fc95e975".parse()?;
     let did_we_merge_yet = DidWeMergeYet::new(address, node.client.clone());
+
+    println!(
+        "Does oracle exist yet: {:?}",
+        does_oracle_exist(&node).await?
+    );
 
     let mut stream = provider.watch_blocks().await?;
     while let Some(block) = stream.next().await {
@@ -56,6 +66,9 @@ async fn main() -> Result<()> {
                     println!("Sent transaction: {:?}", tx);
                 } else {
                     println!("A transaction failed");
+                    if does_oracle_exist(&node).await? {
+                        println!("Oracle exists. Too late.");
+                    }
                 }
             } else {
                 println!("Did nothing");
