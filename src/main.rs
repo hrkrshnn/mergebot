@@ -19,7 +19,14 @@ const GASPRICE: u64 = 69420314159;
 
 async fn blocks_left(block: &Block<TxHash>) -> Option<u128> {
     let difficulty = block.difficulty;
-    let total_difficulty = block.total_difficulty.unwrap();
+    let total_difficulty = block.total_difficulty;
+
+    // Used for testing against anvil forks
+    if difficulty == U256::zero() || total_difficulty.is_none() {
+        return Some(0);
+    }
+
+    let total_difficulty = total_difficulty.unwrap();
 
     if total_difficulty > U256::from(TTD) {
         Some(0)
@@ -59,7 +66,7 @@ async fn main() -> Result<()> {
     while let Some(block) = stream.next().await {
         let block = provider.get_block(block).await?.unwrap();
         println!(
-            "Ta: {:?}, block number: {} difficulty: {:?}",
+            "TS: {:?}, block number: {} difficulty: {:?}",
             block.timestamp,
             block.number.unwrap(),
             block.difficulty,
@@ -67,23 +74,22 @@ async fn main() -> Result<()> {
 
         if let Some(num) = blocks_left(&block).await {
             println!("Blocks away: {:?}", num);
+            if does_oracle_exist(&node).await? {
+                println!("Oracle exists. Too late.");
+                break;
+            }
             if num <= 3 {
-                // TODO test on anvil
-                if let Ok(tx) =
-                    did_we_merge_yet
+                if let Ok(tx) = did_we_merge_yet
                     .trigger()
                     .gas(GASLIMIT)
                     .gas_price(GASPRICE)
                     .send()
                     .await?
-                    .await {
+                    .await
+                {
                     println!("Sent transaction: {:?}", tx);
                 } else {
-                    println!("A transaction failed");
-                    if does_oracle_exist(&node).await? {
-                        println!("Oracle exists. Too late.");
-                        break;
-                    }
+                    println!("Failure in sending tx");
                 }
             } else {
                 println!("Did nothing");
