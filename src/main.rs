@@ -17,7 +17,8 @@ const GASLIMIT: u64 = 169420;
 // Something just now 25526840772: 25 gwei
 const GASPRICE: u64 = 69420314159;
 
-async fn blocks_left(block: &Block<TxHash>) -> Option<u128> {
+/// See https://twitter.com/nanexcool/status/1570219566852345856
+fn blocks_left(block: &Block<TxHash>) -> Option<u128> {
     let difficulty = block.difficulty;
     let total_difficulty = block.total_difficulty;
 
@@ -72,7 +73,7 @@ async fn main() -> Result<()> {
             block.difficulty,
         );
 
-        if let Some(num) = blocks_left(&block).await {
+        if let Some(num) = blocks_left(&block) {
             println!("Blocks away: {:?}", num);
             if does_oracle_exist(&node).await? {
                 println!("Oracle exists. Too late.");
