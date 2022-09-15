@@ -12,6 +12,10 @@ abigen!(
 );
 
 const TTD: u128 = 58750000000000000000000;
+// The test benchmarked it at 134k
+const GASLIMIT: u64 = 169420;
+// Something just now 25526840772: 25 gwei
+const GASPRICE: u64 = 69420314159;
 
 async fn blocks_left(block: &Block<TxHash>) -> Option<u128> {
     let difficulty = block.difficulty;
@@ -65,7 +69,14 @@ async fn main() -> Result<()> {
             println!("Blocks away: {:?}", num);
             if num <= 3 {
                 // TODO test on anvil
-                if let Ok(tx) = did_we_merge_yet.trigger().send().await?.await {
+                if let Ok(tx) =
+                    did_we_merge_yet
+                    .trigger()
+                    .gas(GASLIMIT)
+                    .gas_price(GASPRICE)
+                    .send()
+                    .await?
+                    .await {
                     println!("Sent transaction: {:?}", tx);
                 } else {
                     println!("A transaction failed");
