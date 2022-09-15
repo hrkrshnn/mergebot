@@ -43,10 +43,13 @@ async fn main() -> Result<()> {
     let address: Address = "0xc86E1A7a4AA5A9B17f6997a59B311835fc95e975".parse()?;
     let did_we_merge_yet = DidWeMergeYet::new(address, node.client.clone());
 
-    println!(
-        "Does oracle exist yet: {:?}",
-        does_oracle_exist(&node).await?
-    );
+    let exists = does_oracle_exist(&node).await?;
+    if exists {
+        println!("Oracle exists! Quitting");
+        return Ok(());
+    } else {
+        println!("Oracle does not exist yet.");
+    }
 
     let mut stream = provider.watch_blocks().await?;
     while let Some(block) = stream.next().await {
@@ -68,6 +71,7 @@ async fn main() -> Result<()> {
                     println!("A transaction failed");
                     if does_oracle_exist(&node).await? {
                         println!("Oracle exists. Too late.");
+                        break;
                     }
                 }
             } else {
