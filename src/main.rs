@@ -1,6 +1,7 @@
 use ethers::prelude::*;
 use ethers::providers::Ws;
 use eyre::Result;
+use log::{error, info};
 use std::time::Duration;
 
 mod node;
@@ -47,26 +48,27 @@ async fn does_oracle_exist(node: &Node) -> Result<bool> {
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    env_logger::init();
     let node = Node::new_local_node_from_env().await?;
     let ws = Ws::connect(node.ws_endpoint.clone()).await?;
     let provider = Provider::new(ws).interval(Duration::from_millis(1000));
 
-    println!("Watching for blocks");
+    info!("Watching for blocks");
     let address: Address = "0xc86E1A7a4AA5A9B17f6997a59B311835fc95e975".parse()?;
     let did_we_merge_yet = DidWeMergeYet::new(address, node.client.clone());
 
     let exists = does_oracle_exist(&node).await?;
     if exists {
-        println!("Oracle exists! Quitting");
+        error!("Oracle exists! Quitting");
         return Ok(());
     } else {
-        println!("Oracle does not exist yet.");
+        info!("Oracle does not exist yet.");
     }
 
     let mut stream = provider.watch_blocks().await?;
     while let Some(block) = stream.next().await {
         let block = provider.get_block(block).await?.unwrap();
-        println!(
+        info!(
             "TS: {:?}, block number: {} difficulty: {:?}",
             block.timestamp,
             block.number.unwrap(),
@@ -74,9 +76,9 @@ async fn main() -> Result<()> {
         );
 
         if let Some(num) = blocks_left(&block) {
-            println!("Blocks away: {:?}", num);
+            info!("Blocks away: {:?}", num);
             if does_oracle_exist(&node).await? {
-                println!("Oracle exists. Too late.");
+                error!("Oracle exists. Too late.");
                 break;
             }
             if num <= 3 {
@@ -88,12 +90,12 @@ async fn main() -> Result<()> {
                     .await?
                     .await
                 {
-                    println!("Sent transaction: {:?}", tx);
+                    info!("Sent transaction: {:?}", tx);
                 } else {
-                    println!("Failure in sending tx");
+                    error!("Failure in sending tx");
                 }
             } else {
-                println!("Did nothing");
+                info!("Did nothing");
             }
         }
     }
